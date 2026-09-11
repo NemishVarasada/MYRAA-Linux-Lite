@@ -13,6 +13,9 @@ extraResources:
   - from: agent_dist/vaani-agent
     to: agent
     filter: ["**/*"]
+  - from: local_ai
+    to: local-ai
+    filter: ["bin/**/*", "models/**/*", "manifest.json"]
 linux:
   target:
     - target: deb

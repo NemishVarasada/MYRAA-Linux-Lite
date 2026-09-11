@@ -22,6 +22,12 @@ const http = require('http');
 const { spawn } = require('child_process');
 const fs = require('fs');
 
+// Ubuntu 22.04 systems can ship an older VAAPI stack than Electron expects.
+// Software rendering avoids black windows while keeping this lightweight UI fast.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEncoder,UseChromeOSDirectVideoDecoder');
+
 // --- Constants -------------------------------------------------------------
 const SERVER_PORT = 3000;
 const SERVER_ORIGIN = `http://127.0.0.1:${SERVER_PORT}`;
@@ -76,6 +82,9 @@ function startBackend() {
   // Data (memories, settings, secrets, logs) must live in a writable per-user
   // folder — the install dir under Program Files is read-only.
   const dataDir = app.getPath('userData');
+  const localAiDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'local-ai')
+    : path.join(APP_ROOT, 'local_ai');
 
   // Frozen Python desktop agent (bundled as an extraResource when packaged).
   // In development this file won't exist, so the backend falls back to running
@@ -93,6 +102,7 @@ function startBackend() {
     VAANI_DATA_DIR: dataDir,
     VAANI_APP_ROOT: APP_ROOT,
     VAANI_APP_EXECUTABLE: process.execPath,
+    VAANI_LOCAL_AI_DIR: localAiDir,
   };
   if (fs.existsSync(agentExe)) {
     env.VAANI_AGENT_EXE = agentExe;

@@ -1,17 +1,21 @@
 # Rename the GitHub repository
 
-The connected GitHub token is currently read-only, so repository renaming must be confirmed by the owner.
-
-From this repository folder, run:
+After the product branch is reviewed and merged, run this command from the repository folder:
 
 ```bash
 gh repo rename Vaani-Linux
 ```
 
-Confirm when GitHub asks. Then verify:
+Verify the new location:
 
 ```bash
-gh repo view NemishVarasada/Vaani-Linux --json nameWithOwner,isPrivate,url
+gh repo view Nemish-Vaani/Vaani-Linux --json nameWithOwner,isPrivate,url
 ```
 
-After development, keep the repository private and authorize only the repositories that need automation access.
+Update any local clone that does not follow GitHub's redirect:
+
+```bash
+git remote set-url origin https://github.com/Nemish-Vaani/Vaani-Linux.git
+```
+
+Keep real provider keys, local settings, memories, logs, model files, build outputs, and virtual environments out of Git.

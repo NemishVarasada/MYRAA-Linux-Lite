@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "edition": "Vaani Fully Offline",
+  "runtime": {
+    "chat": "bin/llama-server",
+    "speechToText": "bin/whisper-cli",
+    "textToSpeech": "bin/piper"
+  },
+  "models": {
+    "assistant": "models/assistant.gguf",
+    "speechToText": "models/whisper.bin",
+    "voice": "models/voice.onnx",
+    "voiceConfig": "models/voice.onnx.json"
+  },
+  "networkRequiredAtRuntime": false
+}

@@ -11,5 +11,5 @@ python -m pip install -r requirements-linux.txt pyinstaller
 rm -rf agent_build agent_dist
 pyinstaller --clean --noconfirm --workpath agent_build --distpath agent_dist desktop_agent_linux.spec
 npm install
-npm run dist:linux
+npm run dist:offline
 printf '\nBuild complete. Packages are in: %s/release\n' "$PWD"

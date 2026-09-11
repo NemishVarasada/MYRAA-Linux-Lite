@@ -4,8 +4,10 @@ import fs from "fs";
 import crypto from "node:crypto";
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { DATA_DIR, dataFile } from "./server_paths";
-import { profileFor, publicSettings, remove, secret, setRoles, settings, upsert } from "./provider_config";
-import { chat, testProvider, transcribe } from "./src/providers/runtime";
+import { addPreset, autoAssign, profileFor, publicSettings, remove, secret, setRoles, settings, upsert } from "./provider_config";
+import { PROVIDER_CATALOG } from "./src/providers/catalog";
+import { chat, listModels, synthesize, testProvider, transcribe } from "./src/providers/runtime";
+import { localStatus, stopLocalRuntime } from "./src/local/runtime";
 import type { ChatMessage, ProviderProfile, ProviderRole } from "./src/providers/types";
 
 const PORT=3000, AGENT_URL="http://127.0.0.1:8765", AGENT_TOKEN=crypto.randomUUID();
@@ -38,14 +40,20 @@ async function extractMemory(userText:string,assistantText:string){try{const p=p
 async function main(){const app=express();
 app.post("/api/transcribe",express.raw({type:["audio/wav","application/octet-stream"],limit:"30mb"}),async(req,res)=>{try{const p=profileFor("speechToText"),text=await transcribe(p,secret(p.id),req.body as Buffer);res.json({text,provider:p.name})}catch(e:any){res.status(502).json({error:e.message})}});
 app.use(express.json({limit:"3mb"}));
+app.get("/api/provider-catalog",(_q,res)=>res.json({providers:PROVIDER_CATALOG}));
+app.get("/api/local-status",async(_q,res)=>res.json(await localStatus()));
 app.get("/api/providers",(_q,res)=>res.json(publicSettings()));
-app.post("/api/providers",(req,res)=>{try{res.json({...upsert(req.body.profile,req.body.apiKey),hasSecret:!!req.body.apiKey})}catch(e:any){res.status(400).json({error:e.message})}});
+app.post("/api/providers/from-preset",(req,res)=>{try{res.json(addPreset(String(req.body.presetId||"")))}catch(e:any){res.status(400).json({error:e.message})}});
+app.post("/api/providers",(req,res)=>{try{const saved=upsert(req.body.profile,req.body.apiKey);res.json({...saved,hasSecret:!!req.body.apiKey||!!secret(saved.id)})}catch(e:any){res.status(400).json({error:e.message})}});
 app.delete("/api/providers/:id",(req,res)=>{try{remove(req.params.id);res.json({ok:true})}catch(e:any){res.status(400).json({error:e.message})}});
 app.post("/api/providers/roles",(req,res)=>{try{res.json({roles:setRoles(req.body.roles||{})})}catch(e:any){res.status(400).json({error:e.message})}});
+app.post("/api/providers/:id/auto-assign",(req,res)=>{try{res.json({roles:autoAssign(req.params.id)})}catch(e:any){res.status(400).json({error:e.message})}});
+app.get("/api/providers/:id/models",async(req,res)=>{const p=settings().profiles.find(x=>x.id===req.params.id);if(!p)return res.status(404).json({error:"Provider not found."});try{res.json({models:await listModels(p,secret(p.id))})}catch(e:any){res.status(502).json({error:e.message})}});
 app.post("/api/providers/:id/test",async(req,res)=>{const p=settings().profiles.find(x=>x.id===req.params.id);if(!p)return res.status(404).json({error:"Provider not found."});const result=await testProvider(p,secret(p.id));res.status(result.ok?200:502).json(result)});
 app.post("/api/chat",async(req,res)=>{try{const text=String(req.body?.text||"").trim();if(!text)return res.status(400).json({error:"Text is required."});const result=await answer(text);res.json(result);void extractMemory(text,result.text)}catch(e:any){log("errors",e.message);res.status(502).json({error:e.message})}});
+app.post("/api/speak",async(req,res)=>{try{const text=String(req.body?.text||"").trim();if(!text)return res.status(400).json({error:"Text is required."});const p=profileFor("textToSpeech"),audio=await synthesize(p,secret(p.id),text);res.type("audio/wav").send(audio)}catch(e:any){res.status(502).json({error:e.message})}});
 app.get("/api/agent-health",async(_q,res)=>{const h=await ensureAgent();res.json(h?{online:true,tool_count:h.tool_count,capabilities:h.capabilities||{}}:{online:false})});
 app.get("/api/memories",(_q,res)=>res.json(loadMemories()));app.delete("/api/memories/:id",(req,res)=>{saveMemories(loadMemories().filter(x=>x.id!==req.params.id));res.json({ok:true})});
 app.get("/api/settings",(_q,res)=>{try{res.json(JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8")))}catch{res.json({})}});app.post("/api/settings",async(req,res)=>{const next={...(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))}catch{return{}}})(),...req.body};fs.writeFileSync(SETTINGS_FILE,JSON.stringify(next,null,2),{mode:0o600});if("autoStart" in req.body)void runTool(req.body.autoStart?"enableAutoStart":"disableAutoStart",{});res.json(next)});
-app.use(express.static(path.join(process.cwd(),"dist")));app.get("*",(_q,res)=>res.sendFile(path.join(process.cwd(),"dist","index.html")));const server=app.listen(PORT,"127.0.0.1",()=>{log("startup",`Vaani started on ${PORT}`);void ensureAgent()});const stop=()=>{agent?.kill("SIGTERM");server.close()};process.on("SIGTERM",stop);process.on("SIGINT",stop)}
+app.use(express.static(path.join(process.cwd(),"dist")));app.get("*",(_q,res)=>res.sendFile(path.join(process.cwd(),"dist","index.html")));const server=app.listen(PORT,"127.0.0.1",()=>{log("startup",`Vaani started on ${PORT}`);void ensureAgent()});const stop=()=>{agent?.kill("SIGTERM");stopLocalRuntime();server.close()};process.on("SIGTERM",stop);process.on("SIGINT",stop)}
 main().catch(e=>{console.error(e);process.exit(1)});

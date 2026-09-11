@@ -1,7 +1,7 @@
 {
   "name": "vaani-linux",
   "productName": "Vaani",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -12,6 +12,9 @@
     "electron": "electron .",
     "app": "npm run build && electron .",
     "dist:linux": "npm run build && electron-builder --linux deb AppImage",
+    "verify:offline": "node scripts/verify-offline-assets.cjs",
+    "dist:offline": "npm run verify:offline && npm run dist:linux",
+    "test:product": "tsx scripts/product-selftest.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,5 +29,5 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   },
-  "description": "Local-first multi-provider Linux voice assistant"
+  "description": "Product-ready offline-first multi-provider Linux voice assistant"
 }

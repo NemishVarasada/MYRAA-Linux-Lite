@@ -1,65 +1,29 @@
 import crypto from "node:crypto";
+import { ensureLocalChat, speakLocal, transcribeLocal } from "../local/runtime";
+import { presetFor } from "./catalog";
 import type { ChatMessage, ChatResult, ProviderProfile, ToolCall } from "./types";
 
-const defaults: Record<string,string> = {
-  ollama: "http://127.0.0.1:11434/v1",
-  huggingface: "https://router.huggingface.co/v1",
-  openai: "https://api.openai.com/v1",
-  openrouter: "https://openrouter.ai/api/v1",
-  groq: "https://api.groq.com/openai/v1",
-  custom: "http://127.0.0.1:8000/v1",
-};
-const url = (base:string, suffix:string) => `${base.replace(/\/+$/,"")}${suffix}`;
-const headers = (secret?:string) => secret ? { Authorization:`Bearer ${secret}` } : {};
-const errorText = async (response:Response) => {
-  const body:any = await response.json().catch(()=>({}));
-  return body?.error?.message || body?.error || body?.message || `HTTP ${response.status}`;
-};
-export function normalizedProfile(profile:ProviderProfile):ProviderProfile {
-  return {...profile, baseUrl:(profile.baseUrl || defaults[profile.kind]).replace(/\/+$/,"")};
+const url=(base:string,suffix:string)=>`${base.replace(/\/+$/,"")}${suffix}`;
+const authHeaders=(p:ProviderProfile,key?:string):Record<string,string>=>p.apiStyle==="anthropic"?(key?{"x-api-key":key,"anthropic-version":"2023-06-01"}:{}):(key?{Authorization:`Bearer ${key}`}:{})
+const errorText=async(response:Response)=>{const body:any=await response.json().catch(()=>({}));return body?.error?.message||body?.error?.type||body?.error||body?.message||`HTTP ${response.status}`}
+export function normalizedProfile(profile:ProviderProfile){const preset=presetFor(profile.presetId||profile.kind);return{...profile,apiStyle:profile.apiStyle||preset?.apiStyle||"openai",requiresKey:profile.requiresKey??preset?.requiresKey??false,baseUrl:(profile.baseUrl||preset?.baseUrl||"").replace(/\/+$/,"")}}
+function requireReady(p:ProviderProfile,key?:string){if(!p.chatModel)throw new Error(`${p.name}: choose a chat model first.`);if(p.requiresKey&&!key)throw new Error(`${p.name}: enter an API key first.`)}
+async function openAIChat(p:ProviderProfile,key:string|undefined,messages:ChatMessage[],tools?:unknown[]):Promise<ChatResult>{
+  const body:any={model:p.chatModel,messages,temperature:0.25,max_tokens:800};if(tools?.length&&p.capabilities.tools){body.tools=tools;body.tool_choice="auto"}
+  const response=await fetch(url(p.baseUrl,"/chat/completions"),{method:"POST",headers:{...authHeaders(p,key),"Content-Type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});if(!response.ok)throw new Error(await errorText(response));
+  const data:any=await response.json(),message:any=data.choices?.[0]?.message;if(!message)throw new Error(`${p.name} returned no message.`);
+  const calls:ToolCall[]=(message.tool_calls||[]).map((call:any)=>{let args:Record<string,unknown>={};try{args=typeof call.function?.arguments==="string"?JSON.parse(call.function.arguments):call.function?.arguments||{}}catch{throw new Error(`Invalid tool arguments from ${p.name}.`)}return{id:String(call.id||crypto.randomUUID()),name:String(call.function?.name||""),arguments:args,raw:call}}).filter((call:ToolCall)=>call.name);
+  return{text:String(message.content||""),toolCalls:calls,assistantMessage:{role:"assistant",content:String(message.content||""),tool_calls:message.tool_calls},raw:data};
 }
-export async function testProvider(profile:ProviderProfile, secret?:string) {
-  const p=normalizedProfile(profile), started=Date.now();
-  try {
-    const response=await fetch(url(p.baseUrl,"/models"),{headers:headers(secret),signal:AbortSignal.timeout(15000)});
-    return {ok:response.ok,message:response.ok?`Connected to ${p.name}.`:`Connection failed: ${await errorText(response)}`,latencyMs:Date.now()-started};
-  } catch(error:any) { return {ok:false,message:`Connection failed: ${error.message}`,latencyMs:Date.now()-started}; }
+function anthropicMessages(messages:ChatMessage[]){const result:any[]=[];for(const m of messages){if(m.role==="system")continue;if(m.role==="tool"){result.push({role:"user",content:[{type:"tool_result",tool_use_id:m.tool_call_id,content:m.content}]});continue}if(m.role==="assistant"&&Array.isArray(m.tool_calls)&&m.tool_calls.length){const content:any[]=[];if(m.content)content.push({type:"text",text:m.content});for(const call of m.tool_calls as any[])content.push({type:"tool_use",id:call.id,name:call.function?.name,input:typeof call.function?.arguments==="string"?JSON.parse(call.function.arguments):call.function?.arguments||{}});result.push({role:"assistant",content});continue}result.push({role:m.role,content:m.content})}return result}
+async function anthropicChat(p:ProviderProfile,key:string|undefined,messages:ChatMessage[],tools?:unknown[]):Promise<ChatResult>{
+  const system=messages.filter(m=>m.role==="system").map(m=>m.content).join("\n\n");const body:any={model:p.chatModel,max_tokens:800,temperature:.25,system,messages:anthropicMessages(messages)};
+  if(tools?.length&&p.capabilities.tools)body.tools=(tools as any[]).map(t=>({name:t.function.name,description:t.function.description,input_schema:t.function.parameters}));
+  const response=await fetch(url(p.baseUrl,"/messages"),{method:"POST",headers:{...authHeaders(p,key),"Content-Type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});if(!response.ok)throw new Error(await errorText(response));const data:any=await response.json();
+  const text=(data.content||[]).filter((b:any)=>b.type==="text").map((b:any)=>b.text).join("\n");const uses=(data.content||[]).filter((b:any)=>b.type==="tool_use");const calls:ToolCall[]=uses.map((b:any)=>({id:String(b.id||crypto.randomUUID()),name:String(b.name||""),arguments:b.input||{},raw:b}));const tool_calls=uses.map((b:any)=>({id:b.id,type:"function",function:{name:b.name,arguments:JSON.stringify(b.input||{})}}));return{text,toolCalls:calls,assistantMessage:{role:"assistant",content:text,tool_calls},raw:data};
 }
-export async function chat(profile:ProviderProfile, secret:string|undefined, messages:ChatMessage[], tools?:unknown[]):Promise<ChatResult> {
-  const p=normalizedProfile(profile);
-  if(!p.chatModel) throw new Error(`${p.name} has no chat model configured.`);
-  if(!["ollama","custom"].includes(p.kind) && !secret) throw new Error(`${p.name} needs an API key or token.`);
-  const body:any={model:p.chatModel,messages,temperature:0.25,max_tokens:800};
-  if(tools?.length && p.capabilities.tools) { body.tools=tools; body.tool_choice="auto"; }
-  const response=await fetch(url(p.baseUrl,"/chat/completions"),{method:"POST",headers:{...headers(secret),"Content-Type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});
-  if(!response.ok) throw new Error(await errorText(response));
-  const data:any=await response.json();
-  const message:any=data.choices?.[0]?.message;
-  if(!message) throw new Error(`${p.name} returned no message.`);
-  const calls:ToolCall[]=(message.tool_calls||[]).map((call:any)=>{
-    let args:Record<string,unknown>={};
-    try { args=typeof call.function?.arguments==="string"?JSON.parse(call.function.arguments):call.function?.arguments||{}; } catch { throw new Error(`Invalid tool arguments from ${p.name}.`); }
-    return {id:String(call.id||crypto.randomUUID()),name:String(call.function?.name||""),arguments:args,raw:call};
-  }).filter((call:ToolCall)=>call.name);
-  return {text:String(message.content||""),toolCalls:calls,assistantMessage:{role:"assistant",content:String(message.content||""),tool_calls:message.tool_calls},raw:data};
-}
-export async function transcribe(profile:ProviderProfile, secret:string|undefined, audio:Buffer):Promise<string> {
-  const p=normalizedProfile(profile);
-  if(!p.speechModel) throw new Error(`${p.name} has no speech model configured.`);
-  if(!["ollama","custom"].includes(p.kind) && !secret) throw new Error(`${p.name} needs an API key or token.`);
-  if(p.kind==="huggingface") {
-    const endpoint="https://router.huggingface.co/hf-inference/models/"+p.speechModel;
-    const response=await fetch(endpoint,{method:"POST",headers:{...headers(secret),"Content-Type":"audio/wav"},body:audio,signal:AbortSignal.timeout(120000)});
-    if(!response.ok) throw new Error(await errorText(response));
-    const data:any=await response.json();
-    return String(data.text||"").trim();
-  }
-  if(p.kind==="ollama") throw new Error("Ollama does not provide speech-to-text. Configure Hugging Face, Groq, OpenAI, or a custom Whisper-compatible endpoint.");
-  const form=new FormData();
-  form.append("file",new Blob([audio],{type:"audio/wav"}),"speech.wav");
-  form.append("model",p.speechModel);
-  const response=await fetch(url(p.baseUrl,"/audio/transcriptions"),{method:"POST",headers:headers(secret),body:form,signal:AbortSignal.timeout(120000)});
-  if(!response.ok) throw new Error(await errorText(response));
-  const data:any=await response.json();
-  return String(data.text||"").trim();
-}
+export async function chat(profile:ProviderProfile,key:string|undefined,messages:ChatMessage[],tools?:unknown[]):Promise<ChatResult>{const p=normalizedProfile(profile);requireReady(p,key);if(p.kind==="vaani-local")await ensureLocalChat();return p.apiStyle==="anthropic"?anthropicChat(p,key,messages,tools):openAIChat(p,key,messages,tools)}
+export async function listModels(profile:ProviderProfile,key?:string){const p=normalizedProfile(profile),preset=presetFor(p.presetId||p.kind);if(p.kind==="vaani-local")return preset?.chatModels||[];try{const r=await fetch(url(p.baseUrl,"/models"),{headers:authHeaders(p,key),signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error(await errorText(r));const d:any=await r.json();const items=Array.isArray(d.data)?d.data:Array.isArray(d.models)?d.models:[];const names=items.map((x:any)=>String(x.id||x.name||"")).filter(Boolean);return names.length?names:(preset?.chatModels||[])}catch(error){if(preset?.chatModels.length)return preset.chatModels;throw error}}
+export async function testProvider(profile:ProviderProfile,key?:string){const p=normalizedProfile(profile),started=Date.now();try{const result=await chat(p,key,[{role:"system",content:"This is a connection test."},{role:"user",content:"Reply with exactly VAANI_OK"}]);if(!result.text.trim())throw new Error("The model returned an empty response.");return{ok:true,message:`Real response received from ${p.name}.`,reply:result.text.trim().slice(0,120),latencyMs:Date.now()-started}}catch(error:any){return{ok:false,message:`${p.name} test failed: ${error.message}`,latencyMs:Date.now()-started}}}
+export async function transcribe(profile:ProviderProfile,key:string|undefined,audio:Buffer){const p=normalizedProfile(profile);if(p.kind==="vaani-local")return transcribeLocal(audio);if(!p.speechModel)throw new Error(`${p.name}: choose a speech model first.`);if(p.requiresKey&&!key)throw new Error(`${p.name}: enter an API key first.`);if(p.kind==="huggingface"){const endpoint="https://router.huggingface.co/hf-inference/models/"+p.speechModel;const response=await fetch(endpoint,{method:"POST",headers:{...authHeaders(p,key),"Content-Type":"audio/wav"},body:audio,signal:AbortSignal.timeout(120000)});if(!response.ok)throw new Error(await errorText(response));const data:any=await response.json();return String(data.text||"").trim()}const form=new FormData();form.append("file",new Blob([audio],{type:"audio/wav"}),"speech.wav");form.append("model",p.speechModel);const response=await fetch(url(p.baseUrl,"/audio/transcriptions"),{method:"POST",headers:authHeaders(p,key),body:form,signal:AbortSignal.timeout(120000)});if(!response.ok)throw new Error(await errorText(response));const data:any=await response.json();return String(data.text||"").trim()}
+export async function synthesize(profile:ProviderProfile,key:string|undefined,text:string){const p=normalizedProfile(profile);if(p.kind==="vaani-local")return speakLocal(text);if(!p.ttsModel)throw new Error(`${p.name}: choose a voice model first.`);if(p.requiresKey&&!key)throw new Error(`${p.name}: enter an API key first.`);const response=await fetch(url(p.baseUrl,"/audio/speech"),{method:"POST",headers:{...authHeaders(p,key),"Content-Type":"application/json"},body:JSON.stringify({model:p.ttsModel,input:text,voice:"alloy",format:"wav"}),signal:AbortSignal.timeout(120000)});if(!response.ok)throw new Error(await errorText(response));return Buffer.from(await response.arrayBuffer())}

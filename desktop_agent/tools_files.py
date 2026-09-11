@@ -82,7 +82,7 @@ def _ensure_safe(p: Path, allow_anywhere: bool = False) -> None:
         if real == root_real or real.startswith(root_real + os.sep):
             return
     raise ToolError(
-        f"Path '{p}' is outside MYRAA's safe folders (Desktop, Documents, "
+        f"Path '{p}' is outside VAANI's safe folders (Desktop, Documents, "
         f"Downloads, Pictures, Music, Videos, home, and the project folder). "
         f"Pass allow_anywhere=true only if you really mean it."
     )

@@ -1,5 +1,5 @@
 """
-MYRAA Desktop Control Agent — Central tool registry.
+VAANI Desktop Control Agent — Central tool registry.
 
 Each tool module registers handlers into a flat dict `TOOLS` mapping
 tool_name -> callable(args: dict) -> dict.
@@ -71,7 +71,7 @@ def register(name: str):
     return deco
 
 
-# The set of all tool names MYRAA may route to this agent.
+# The set of all tool names VAANI may route to this agent.
 # Kept in sync with the functionDeclarations added in server.ts.
 DESKTOP_TOOL_NAMES = [
     # applications / websites / search

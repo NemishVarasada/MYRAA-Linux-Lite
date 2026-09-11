@@ -1,85 +1,18 @@
-export type ProviderType = "gemini" | "huggingface" | "openai-compatible" | "ollama" | "local-speech";
-
-export interface ModelCapabilities {
-  chat?: boolean;
-  tools?: boolean;
-  streaming?: boolean;
-  realtimeAudio?: boolean;
-  speechToText?: boolean;
-  textToSpeech?: boolean;
-  vision?: boolean;
-}
-
-export interface ModelProfile {
+export type ProviderKind = "ollama" | "huggingface" | "openai" | "openrouter" | "groq" | "custom";
+export type ProviderRole = "assistant" | "speechToText" | "memory" | "fallback";
+export type ProviderCapabilities = { chat?: boolean; tools?: boolean; speechToText?: boolean; streaming?: boolean };
+export type ProviderProfile = {
   id: string;
-  displayName: string;
-  providerType: ProviderType;
-  baseUrl?: string;
-  modelId: string;
-  secretReference?: string;
-  engine?: string;
-  capabilities: ModelCapabilities;
+  name: string;
+  kind: ProviderKind;
+  baseUrl: string;
+  chatModel?: string;
+  speechModel?: string;
   enabled: boolean;
-}
-
-export type ModelRole =
-  | "assistantProfileId"
-  | "toolProfileId"
-  | "speechToTextProfileId"
-  | "textToSpeechProfileId"
-  | "memoryProfileId"
-  | "fallbackAssistantProfileId";
-
-export interface ProviderSettings {
-  profiles: ModelProfile[];
-  roles: Partial<Record<ModelRole, string>>;
-}
-
-export interface ConnectionResult {
-  ok: boolean;
-  message: string;
-  latencyMs?: number;
-}
-
-export interface ChatMessage {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string;
-}
-
-export interface ChatRequest {
-  messages: ChatMessage[];
-  tools?: unknown[];
-  temperature?: number;
-}
-
-export interface ChatResponse {
-  text: string;
-  raw?: unknown;
-  toolCalls?: Array<{ id?: string; name: string; arguments: Record<string, unknown> }>;
-}
-
-export interface ChatProvider {
-  readonly profile: ModelProfile;
-  readonly supportsTools: boolean;
-  readonly supportsStreaming: boolean;
-  testConnection(): Promise<ConnectionResult>;
-  listModels?(): Promise<Array<{ id: string; displayName?: string }>>;
-  chat(request: ChatRequest): Promise<ChatResponse>;
-}
-
-export interface SpeechToTextProvider {
-  readonly profile: ModelProfile;
-  testConnection(): Promise<ConnectionResult>;
-  transcribe(audio: Buffer, mimeType?: string): Promise<string>;
-}
-
-export interface AudioResult {
-  audio: Buffer;
-  mimeType: string;
-}
-
-export interface TextToSpeechProvider {
-  readonly profile: ModelProfile;
-  testConnection(): Promise<ConnectionResult>;
-  speak(text: string): Promise<AudioResult>;
-}
+  capabilities: ProviderCapabilities;
+  hasSecret?: boolean;
+};
+export type ProviderSettings = { profiles: ProviderProfile[]; roles: Partial<Record<ProviderRole,string>> };
+export type ChatMessage = { role: "system"|"user"|"assistant"|"tool"; content: string; tool_call_id?: string; name?: string; tool_calls?: unknown[] };
+export type ToolCall = { id: string; name: string; arguments: Record<string,unknown>; raw: unknown };
+export type ChatResult = { text: string; toolCalls: ToolCall[]; assistantMessage: ChatMessage; raw?: unknown };

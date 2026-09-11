@@ -1,17 +1,17 @@
 """
-MYRAA Desktop Control Agent — frozen entrypoint.
+VAANI Desktop Control Agent — frozen entrypoint.
 
-This is the script PyInstaller freezes into `myraa-agent.exe`. It runs the
+This is the script PyInstaller freezes into `vaani-agent.exe`. It runs the
 FastAPI agent with uvicorn using the app *object* (not an import string), which
 is the reliable way to launch inside a PyInstaller bundle. Logs are written to
 the per-user data directory so failures are never silent, even with no console.
 
-Run (frozen):   myraa-agent.exe
+Run (frozen):   vaani-agent.exe
 Run (dev):      python run_agent.py
 Environment:
-    MYRAA_AGENT_HOST   default 127.0.0.1
-    MYRAA_AGENT_PORT   default 8765
-    MYRAA_DATA_DIR     where logs/ is written (default: cwd)
+    VAANI_AGENT_HOST   default 127.0.0.1
+    VAANI_AGENT_PORT   default 8765
+    VAANI_DATA_DIR     where logs/ is written (default: cwd)
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pathlib import Path
 
 
 def _resolve_data_dir() -> Path:
-    data = os.environ.get("MYRAA_DATA_DIR") or os.getcwd()
+    data = os.environ.get("VAANI_DATA_DIR") or os.getcwd()
     logs = Path(data) / "logs"
     try:
         logs.mkdir(parents=True, exist_ok=True)
@@ -53,12 +53,12 @@ def _configure_logging(data_dir: Path) -> None:
 def main() -> None:
     data_dir = _resolve_data_dir()
     _configure_logging(data_dir)
-    log = logging.getLogger("myraa.agent.boot")
+    log = logging.getLogger("vaani.agent.boot")
 
-    host = os.environ.get("MYRAA_AGENT_HOST", "127.0.0.1")
-    port = int(os.environ.get("MYRAA_AGENT_PORT", "8765"))
+    host = os.environ.get("VAANI_AGENT_HOST", "127.0.0.1")
+    port = int(os.environ.get("VAANI_AGENT_PORT", "8765"))
     frozen = getattr(sys, "frozen", False)
-    log.info("Starting MYRAA agent (frozen=%s) on %s:%d", frozen, host, port)
+    log.info("Starting VAANI agent (frozen=%s) on %s:%d", frozen, host, port)
 
     try:
         from desktop_agent.main import app

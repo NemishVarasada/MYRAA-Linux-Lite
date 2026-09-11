@@ -1,5 +1,5 @@
 /* ===========================================================================
- * MYRAA — Electron main process (Phase 1)
+ * VAANI — Electron main process (Phase 1)
  * ---------------------------------------------------------------------------
  * Responsibilities in this phase:
  *   1. Enforce a single running instance.
@@ -24,7 +24,7 @@ const fs = require('fs');
 
 // --- Constants -------------------------------------------------------------
 const SERVER_PORT = 3000;
-const SERVER_ORIGIN = `http://localhost:${SERVER_PORT}`;
+const SERVER_ORIGIN = `http://127.0.0.1:${SERVER_PORT}`;
 const SERVER_READY_TIMEOUT_MS = 40_000;
 
 // In development we run from the repo root; when packaged the app files live in
@@ -80,22 +80,22 @@ function startBackend() {
   // Frozen Python desktop agent (bundled as an extraResource when packaged).
   // In development this file won't exist, so the backend falls back to running
   // the agent from source with a local Python interpreter.
-  const agentName = process.platform === 'win32' ? 'myraa-agent.exe' : 'myraa-agent';
+  const agentName = process.platform === 'win32' ? 'vaani-agent.exe' : 'vaani-agent';
   const agentExe = app.isPackaged
     ? path.join(process.resourcesPath, 'agent', agentName)
-    : path.join(APP_ROOT, 'agent_dist', 'myraa-agent', agentName);
+    : path.join(APP_ROOT, 'agent_dist', 'vaani-agent', agentName);
 
   const env = {
     ...process.env,
     NODE_ENV: 'production',
     ELECTRON_RUN_AS_NODE: '1',
-    MYRAA_LAUNCHED_BY: 'electron',
-    MYRAA_DATA_DIR: dataDir,
-    MYRAA_APP_ROOT: APP_ROOT,
-    MYRAA_APP_EXECUTABLE: process.execPath,
+    VAANI_LAUNCHED_BY: 'electron',
+    VAANI_DATA_DIR: dataDir,
+    VAANI_APP_ROOT: APP_ROOT,
+    VAANI_APP_EXECUTABLE: process.execPath,
   };
   if (fs.existsSync(agentExe)) {
-    env.MYRAA_AGENT_EXE = agentExe;
+    env.VAANI_AGENT_EXE = agentExe;
   }
 
   serverProcess = spawn(process.execPath, [SERVER_ENTRY], {
@@ -110,8 +110,8 @@ function startBackend() {
   serverProcess.on('exit', (code, signal) => {
     if (!isQuitting) {
       dialog.showErrorBox(
-        'MYRAA backend stopped',
-        `The MYRAA backend process exited unexpectedly (code ${code}, signal ${signal}).`,
+        'VAANI backend stopped',
+        `The VAANI backend process exited unexpectedly (code ${code}, signal ${signal}).`,
       );
       app.quit();
     }
@@ -186,7 +186,7 @@ function createMainWindow() {
     show: false, // revealed on ready-to-show to avoid a white flash
     backgroundColor: '#0a0a0f',
     autoHideMenuBar: true,
-    title: 'MYRAA',
+    title: 'VAANI',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -222,7 +222,7 @@ function createMainWindow() {
 // Bootstrap sequence
 // ---------------------------------------------------------------------------
 async function bootstrap() {
-  app.setAppUserModelId('com.myraa.desktop');
+  app.setAppUserModelId('com.vaani.desktop');
   createSplashWindow();
 
   try {
@@ -232,7 +232,7 @@ async function bootstrap() {
   } catch (err) {
     if (splashWindow) splashWindow.close();
     dialog.showErrorBox(
-      'MYRAA failed to start',
+      'VAANI failed to start',
       `${err instanceof Error ? err.message : String(err)}`,
     );
     app.quit();

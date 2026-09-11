@@ -75,7 +75,7 @@ async def _ensure_browser_async() -> Any:
         STATE.playwright = await async_playwright().start()
 
     if STATE.browser is None:
-        # Reuse an installed Linux browser so MYRAA does not download a second,
+        # Reuse an installed Linux browser so VAANI does not download a second,
         # several-hundred-megabyte Chromium bundle.
         system_browser = next(
             (shutil.which(name) for name in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser") if shutil.which(name)),

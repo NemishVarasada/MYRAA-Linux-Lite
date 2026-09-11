@@ -1,8 +1,8 @@
 """
-MYRAA Desktop Control Agent — FastAPI entrypoint.
+VAANI Desktop Control Agent — FastAPI entrypoint.
 
 Single dispatch endpoint POST /execute { tool, args } -> { result } | { error }.
-MYRAA's Node bridge (server.ts) calls this over HTTP on 127.0.0.1:8765.
+VAANI's Node bridge (server.ts) calls this over HTTP on 127.0.0.1:8765.
 
 Run:
     uvicorn desktop_agent.main:app --host 127.0.0.1 --port 8765
@@ -32,7 +32,7 @@ logging.basicConfig(
     format="[%(asctime)s] [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-log = logging.getLogger("myraa.desktop")
+log = logging.getLogger("vaani.desktop")
 
 
 # Load all tool modules so their handlers register before the app starts.
@@ -42,7 +42,7 @@ log.info("Loaded %d desktop tools: %s", len(TOOLS), ", ".join(sorted(TOOLS)))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("MYRAA Desktop Control Agent v%s starting up.", __version__)
+    log.info("VAANI Desktop Control Agent v%s starting up.", __version__)
     yield
     # Clean shutdown of the Playwright browser if it was started.
     try:
@@ -51,26 +51,26 @@ async def lifespan(app: FastAPI):
         shutdown_browser()
     except Exception as e:  # noqa: BLE001
         log.warning("Browser shutdown error: %s", e)
-    log.info("MYRAA Desktop Control Agent stopped.")
+    log.info("VAANI Desktop Control Agent stopped.")
 
 
 app = FastAPI(
-    title="MYRAA Desktop Control Agent",
+    title="VAANI Desktop Control Agent",
     version=__version__,
-    description="JARVIS-style desktop automation backend for MYRAA.",
+    description="JARVIS-style desktop automation backend for VAANI.",
     lifespan=lifespan,
 )
 
-# Only the local MYRAA UI may call the agent from a browser context.
+# Only the local VAANI UI may call the agent from a browser context.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-MYRAA-Token"],
+    allow_headers=["Content-Type", "X-VAANI-Token"],
 )
 
-AGENT_TOKEN = os.environ.get("MYRAA_AGENT_TOKEN", "")
+AGENT_TOKEN = os.environ.get("VAANI_AGENT_TOKEN", "")
 
 
 class ExecuteRequest(BaseModel):
@@ -96,7 +96,7 @@ def health() -> Dict[str, Any]:
             details = {"platform": "linux", "capability_error": str(exc)}
     return {
         "status": "ok",
-        "name": "MYRAA Desktop Control Agent",
+        "name": "VAANI Desktop Control Agent",
         "version": __version__,
         "tools": sorted(TOOLS.keys()),
         "tool_count": len(TOOLS),
@@ -112,9 +112,9 @@ def list_tools() -> Dict[str, Any]:
 @app.post("/execute", response_model=ExecuteResponse)
 def execute(
     req: ExecuteRequest,
-    x_myraa_token: str | None = Header(default=None, alias="X-MYRAA-Token"),
+    x_vaani_token: str | None = Header(default=None, alias="X-VAANI-Token"),
 ) -> ExecuteResponse:
-    if AGENT_TOKEN and (not x_myraa_token or not hmac.compare_digest(AGENT_TOKEN, x_myraa_token)):
+    if AGENT_TOKEN and (not x_vaani_token or not hmac.compare_digest(AGENT_TOKEN, x_vaani_token)):
         raise HTTPException(status_code=403, detail="Invalid local agent token.")
     tool = req.tool
     args = req.args or {}
@@ -168,8 +168,8 @@ def main() -> None:
     """Allow `python -m desktop_agent.main` to launch uvicorn."""
     import uvicorn
 
-    host = os.environ.get("MYRAA_AGENT_HOST", "127.0.0.1")
-    port = int(os.environ.get("MYRAA_AGENT_PORT", "8765"))
+    host = os.environ.get("VAANI_AGENT_HOST", "127.0.0.1")
+    port = int(os.environ.get("VAANI_AGENT_PORT", "8765"))
     log.info("Launching uvicorn on %s:%d", host, port)
     uvicorn.run(
         "desktop_agent.main:app",

@@ -1,6 +1,6 @@
-appId: com.myraa.desktop
-productName: MYRAA
-copyright: Copyright © 2026 MYRAA
+appId: com.vaani.desktop
+productName: Vaani
+copyright: Copyright © 2026 Vaani
 asar: false
 directories:
   output: release
@@ -10,7 +10,7 @@ files:
   - dist/**/*
   - package.json
 extraResources:
-  - from: agent_dist/myraa-agent
+  - from: agent_dist/vaani-agent
     to: agent
     filter: ["**/*"]
 linux:
@@ -20,7 +20,7 @@ linux:
     - target: AppImage
       arch: [x64]
   category: Utility
-  executableName: myraa
+  executableName: vaani
   artifactName: ${productName}-Linux-${version}-${arch}.${ext}
 deb:
   depends:

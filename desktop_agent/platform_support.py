@@ -1,4 +1,4 @@
-"""Linux desktop/session detection and command helpers for MYRAA."""
+"""Linux desktop/session detection and command helpers for VAANI."""
 from __future__ import annotations
 
 import os

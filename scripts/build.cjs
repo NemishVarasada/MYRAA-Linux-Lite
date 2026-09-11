@@ -1,0 +1,2 @@
+const {build}=require('esbuild');const fs=require('fs');const path=require('path');
+(async()=>{fs.rmSync('dist',{recursive:true,force:true});fs.mkdirSync('dist',{recursive:true});await build({entryPoints:['server.ts'],bundle:true,platform:'node',format:'cjs',packages:'external',sourcemap:true,outfile:'dist/server.cjs'});fs.copyFileSync('ui/index.html','dist/index.html');console.log('Built lightweight UI and Node backend.');})().catch(e=>{console.error(e);process.exit(1)});

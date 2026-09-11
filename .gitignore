@@ -1,0 +1,49 @@
+# Secrets
+.env
+.env.*
+!.env.example
+secrets.json
+credentials.json
+provider-settings.json
+hf-settings.json
+
+# Personal information
+memories.json
+settings.json
+conversation-history.json
+logs/
+*.log
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated builds
+build/
+dist/
+release/
+agent_build/
+agent_dist/
+
+# Packaged applications
+*.exe
+*.msi
+*.deb
+*.AppImage
+*.blockmap
+
+# Temporary/editor files
+.vscode/
+.idea/
+*.tmp
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db

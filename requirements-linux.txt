@@ -1,0 +1,9 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+playwright==1.49.1
+psutil==6.1.1
+pytesseract==0.3.13
+Pillow==11.0.0
+Send2Trash==1.8.3
+python-multipart==0.0.20
+nvidia-ml-py3==7.352.0

@@ -1,5 +1,5 @@
 /* ===========================================================================
- * MYRAA — Electron preload
+ * VAANI — Electron preload
  * ---------------------------------------------------------------------------
  * Runs in an isolated context and exposes a minimal, explicit API surface to
  * the renderer via contextBridge. In Phase 1 this only advertises that the UI
@@ -11,7 +11,7 @@
 
 const { contextBridge } = require('electron');
 
-contextBridge.exposeInMainWorld('myraa', {
+contextBridge.exposeInMainWorld('vaani', {
   isDesktop: true,
   platform: process.platform,
   version: process.versions.electron,

@@ -1,4 +1,4 @@
-"""Linux overrides for MYRAA desktop tools.
+"""Linux overrides for VAANI desktop tools.
 
 The existing project remains Windows-compatible. When the agent runs on Linux,
 this module is imported last and replaces Windows handlers with Ubuntu/GNOME
@@ -379,7 +379,7 @@ def _capture_image():
         from PIL import Image
     except ImportError as exc:
         raise ToolError("Screenshot support requires Pillow.") from exc
-    handle, name = tempfile.mkstemp(prefix="myraa-shot-", suffix=".png")
+    handle, name = tempfile.mkstemp(prefix="vaani-shot-", suffix=".png")
     os.close(handle)
     try:
         if _which(["gnome-screenshot"]):
@@ -435,7 +435,7 @@ def take_screenshot(args: Dict[str, Any]) -> Dict[str, Any]:
 @register("saveScreenshot")
 def save_screenshot(args: Dict[str, Any]) -> Dict[str, Any]:
     image = _capture_image()
-    folder = Path.home() / "Pictures" / "MyraaScreenshots"
+    folder = Path.home() / "Pictures" / "VaaniScreenshots"
     folder.mkdir(parents=True, exist_ok=True)
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(args.get("name") or "screenshot")).strip("-") or "screenshot"
     output = folder / f"{safe_name}-{time.strftime('%Y%m%d-%H%M%S')}.png"
@@ -459,14 +459,14 @@ def read_screen(args: Dict[str, Any]) -> Dict[str, Any]:
 # Login auto-start
 # ---------------------------------------------------------------------------
 def _autostart_path() -> Path:
-    return Path.home() / ".config" / "autostart" / "myraa.desktop"
+    return Path.home() / ".config" / "autostart" / "vaani.desktop"
 
 
 def _app_executable() -> str:
-    configured = os.environ.get("MYRAA_APP_EXECUTABLE")
+    configured = os.environ.get("VAANI_APP_EXECUTABLE")
     if configured:
         return configured
-    installed = _which(["myraa"])
+    installed = _which(["vaani"])
     if installed:
         return installed
     return str(Path(sys.argv[0]).resolve())
@@ -478,7 +478,7 @@ def enable_autostart(args: Dict[str, Any]) -> Dict[str, Any]:
     target.parent.mkdir(parents=True, exist_ok=True)
     executable = _app_executable().replace('"', '\\"')
     target.write_text(
-        "[Desktop Entry]\nType=Application\nName=MYRAA\nComment=Lightweight voice assistant\n"
+        "[Desktop Entry]\nType=Application\nName=VAANI\nComment=Lightweight voice assistant\n"
         f'Exec="{executable}"\nTerminal=false\nX-GNOME-Autostart-enabled=true\n',
         encoding="utf-8",
     )

@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 if [[ "$(uname -m)" != "x86_64" ]]; then echo "This build targets x86_64."; exit 1; fi
 sudo apt-get update
-sudo apt-get install -y python3-venv python3-dev build-essential libgtk-3-0 libnss3 libasound2 wl-clipboard xclip xdotool wmctrl brightnessctl gnome-screenshot tesseract-ocr
+sudo apt-get install -y python3-venv python3-dev build-essential libgtk-3-0 libnss3 libasound2 wl-clipboard xclip xdotool wmctrl brightnessctl gnome-screenshot tesseract-ocr speech-dispatcher espeak-ng
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip

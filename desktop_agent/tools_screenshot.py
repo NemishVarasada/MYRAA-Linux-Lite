@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional
 
 from .registry import ToolError, register
 
-SCREENSHOTS_DIR = Path(os.path.expanduser("~")) / "Pictures" / "MyraaScreenshots"
+SCREENSHOTS_DIR = Path(os.path.expanduser("~")) / "Pictures" / "VaaniScreenshots"
 
 
 def _capture() -> "Any":

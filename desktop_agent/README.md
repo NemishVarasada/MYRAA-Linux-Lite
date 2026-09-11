@@ -1,11 +1,11 @@
-# MYRAA Desktop Control Agent
+# VAANI Desktop Control Agent
 
-A local Python FastAPI service that gives MYRAA **JARVIS-style desktop control** —
+A local Python FastAPI service that gives VAANI **JARVIS-style desktop control** —
 open apps, manage files, control volume, take screenshots, OCR the screen, automate a
 real Chromium browser, run code, read system stats, and more.
 
-> **This agent does NOT modify MYRAA's UI, personality, or chat system.** It is a pure
-> backend tool layer that MYRAA's existing Node bridge (`server.ts`) calls over HTTP.
+> **This agent does NOT modify VAANI's UI, personality, or chat system.** It is a pure
+> backend tool layer that VAANI's existing Node bridge (`server.ts`) calls over HTTP.
 
 ---
 
@@ -24,7 +24,7 @@ real Chromium browser, run code, read system stats, and more.
 
 ```bash
 # 1. Navigate to the project root
-cd C:\Users\MSI\Desktop\myraa-ai-assistant
+cd C:\Users\MSI\Desktop\vaani-ai-assistant
 
 # 2. Install Python dependencies (use the full interpreter path if `python` shim is broken)
 "C:\Users\MSI\AppData\Local\Programs\Python\Python311\python.exe" -m pip install -r desktop_agent/requirements.txt
@@ -49,7 +49,7 @@ cd C:\Users\MSI\Desktop\myraa-ai-assistant
 "C:\Users\MSI\AppData\Local\Programs\Python\Python311\python.exe" -m uvicorn desktop_agent.main:app --host 127.0.0.1 --port 8765
 ```
 
-The agent binds to `127.0.0.1:8765`. Then start MYRAA normally with `npm run dev`.
+The agent binds to `127.0.0.1:8765`. Then start VAANI normally with `npm run dev`.
 
 ---
 
@@ -135,7 +135,7 @@ On error:
 | Tool | Description |
 |---|---|
 | `takeScreenshot` | Capture the full screen |
-| `saveScreenshot` | Save screenshot to Pictures/MyraaScreenshots |
+| `saveScreenshot` | Save screenshot to Pictures/VaaniScreenshots |
 | `analyzeScreenshot` | Screenshot + OCR to extract visible text |
 | `readScreen` | Read the active window's title + visible text via OCR |
 
@@ -171,7 +171,7 @@ On error:
 
 ## Safety
 
-- **Power actions** (shutdown, restart, sleep, lock) require a **two-step confirmation token**: MYRAA must first call `requestPowerAction` (which issues a single-use, 60-second token), ask the user out loud to confirm, then call `executePowerAction` with the token. Without a valid token, the action is refused.
+- **Power actions** (shutdown, restart, sleep, lock) require a **two-step confirmation token**: VAANI must first call `requestPowerAction` (which issues a single-use, 60-second token), ask the user out loud to confirm, then call `executePowerAction` with the token. Without a valid token, the action is refused.
 - **File deletions** go to the Recycle Bin by default (`send2trash`).
 - **File operations** are scoped to safe folders (Desktop, Documents, Downloads, Pictures, Music, Videos, home, project root). Paths outside these roots are rejected.
 - **Python script execution** has a configurable timeout (default 30s).
@@ -181,9 +181,9 @@ On error:
 ## Architecture
 
 ```
-MYRAA voice chat (existing, untouched)
+VAANI voice chat (existing, untouched)
         ↓
-Gemini Live API (existing)
+Selected AI provider through the local Node bridge
         ↓
 server.ts — functionCall routing
         ↓
